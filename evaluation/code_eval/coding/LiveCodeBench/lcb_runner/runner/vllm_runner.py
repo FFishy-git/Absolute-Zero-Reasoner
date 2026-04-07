@@ -6,6 +6,7 @@ except ImportError as e:
     pass
 
 from lcb_runner.runner.base_runner import BaseRunner
+from lcb_runner.lm_styles import LMStyle
 
 
 class VLLMRunner(BaseRunner):
@@ -24,6 +25,11 @@ class VLLMRunner(BaseRunner):
             enable_prefix_caching=args.enable_prefix_caching,
             trust_remote_code=args.trust_remote_code,
         )
+        self.tokenizer = AutoTokenizer.from_pretrained(
+            model_tokenizer_path,
+            trust_remote_code=args.trust_remote_code,
+            use_fast=False,
+        )
         self.sampling_params = SamplingParams(
             n=self.args.n,
             max_tokens=self.args.max_tokens,
@@ -37,7 +43,17 @@ class VLLMRunner(BaseRunner):
     def _run_single(self, prompt: str) -> list[str]:
         pass
 
+    def _format_prompt(self, prompt: str) -> str:
+        if self.model.model_style != LMStyle.GenericChat:
+            return prompt
+        return self.tokenizer.apply_chat_template(
+            [{"role": "user", "content": prompt}],
+            tokenize=False,
+            add_generation_prompt=True,
+        )
+
     def run_batch(self, prompts: list[str]) -> list[list[str]]:
+        prompts = [self._format_prompt(prompt) for prompt in prompts]
         outputs = [None for _ in prompts]
         remaining_prompts = []
         remaining_indices = []

@@ -341,6 +341,10 @@ def format_prompt_generation(
         prompt = get_base_model_question_template_answer(question)
         return prompt
 
+    if LanguageModelStyle == LMStyle.GenericChat:
+        prompt = get_generic_question_template_answer(question)
+        return prompt
+
     if LanguageModelStyle == LMStyle.AZR:
         prompt = f"{PromptConstants.SYSTEM_MESSAGE_AZR}"
         prompt += f"{get_azr_question_template_answer(question)}"

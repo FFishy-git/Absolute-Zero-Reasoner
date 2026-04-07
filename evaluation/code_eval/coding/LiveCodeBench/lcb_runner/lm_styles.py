@@ -19,6 +19,7 @@ class LMStyle(Enum):
     DeepSeekAPI = "DeepSeekAPI"
 
     GenericBase = "GenericBase"
+    GenericChat = "GenericChat"
 
     DeepSeekCodeInstruct = "DeepSeekCodeInstruct"
     CodeLLaMaInstruct = "CodeLLaMaInstruct"
@@ -683,6 +684,20 @@ LanguageModelList: list[LanguageModel] = [
         "Zeroshot",
         "Zeroshot",
         LMStyle.Zeroshot,
+        datetime(2025, 4, 7),
+        "https://andrewzh112.github.io/",
+    ),
+    LanguageModel(
+        "GenericBase",
+        "GenericBase",
+        LMStyle.GenericBase,
+        datetime(2025, 4, 7),
+        "https://andrewzh112.github.io/",
+    ),
+    LanguageModel(
+        "GenericChat",
+        "GenericChat",
+        LMStyle.GenericChat,
         datetime(2025, 4, 7),
         "https://andrewzh112.github.io/",
     ),

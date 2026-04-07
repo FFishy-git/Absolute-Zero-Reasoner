@@ -110,3 +110,5 @@ data/dapo*/*
 uploads/*
 evalplus_results/*
 evaluation/code_eval/coding/LiveCodeBench/*/lcb
+data/
+checkpoints_backup/
