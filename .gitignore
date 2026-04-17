@@ -112,3 +112,6 @@ evalplus_results/*
 evaluation/code_eval/coding/LiveCodeBench/*/lcb
 data/
 checkpoints_backup/
+converted_hf/
+local_logs/
+outputs_ductor/

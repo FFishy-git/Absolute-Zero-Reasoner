@@ -826,6 +826,10 @@ class CodeIORewardManager():
         if not problem_type.endswith('code_f'):
             code_key = 'original_snippet' if self.use_original_code_as_ref else 'snippet'
             reference_key = 'original_references' if self.use_original_code_as_ref else 'references'
+            compute_complexity = self.generation_reward_config.complexity_reward.enabled
+            compute_edit_distance = self.generation_reward_config.mean_edit_distance_reward.enabled
+            compute_halstead = self.generation_reward_config.halstead_reward.enabled
+            compute_answer_diversity = self.generation_reward_config.answer_diversity_reward.enabled
             if problem_type.endswith('code_i'):
                 type_counter_key = 'input'
             elif problem_type.endswith('code_o'):
@@ -835,39 +839,43 @@ class CodeIORewardManager():
             else:
                 raise ValueError(f"Invalid problem type: {problem_type}")
             for data_dict in data_dicts:
-                rewards[data_dict['uid']]['complexity'] = get_code_complexity_reward(data_dict['answer'][code_key]) if 'answer' in data_dict else 0.0
+                rewards[data_dict['uid']]['complexity'] = get_code_complexity_reward(data_dict['answer'][code_key]) if compute_complexity and 'answer' in data_dict else 0.0
             for data_dict in data_dicts:
-                rewards[data_dict['uid']]['mean_edit_distance'] = np.mean([ast_edit_distance(data_dict['answer'][code_key], ref) for ref in data_dict[reference_key]]) if 'answer' in data_dict else 0.0
+                rewards[data_dict['uid']]['mean_edit_distance'] = np.mean([ast_edit_distance(data_dict['answer'][code_key], ref) for ref in data_dict[reference_key]]) if compute_edit_distance and 'answer' in data_dict else 0.0
             for data_dict in data_dicts:
-                rewards[data_dict['uid']]['halstead'] = get_halstead_reward(data_dict['answer'][code_key]) if 'answer' in data_dict else 0.0
+                rewards[data_dict['uid']]['halstead'] = get_halstead_reward(data_dict['answer'][code_key]) if compute_halstead and 'answer' in data_dict else 0.0
             for data_dict in data_dicts:
                 rewards[data_dict['uid']]['type_counts'] = get_type_counts_reward(
                     data_dict['answer'][type_counter_key],
                     type_counters,
                     hierarchical=self.generation_reward_config.answer_diversity_reward.hierarchical
-                ) if 'answer' in data_dict else 0.0
+                ) if compute_answer_diversity and 'answer' in data_dict else 0.0
             if self.debug:
                 for data_dict in data_dicts:
                     if 'answer' in data_dict:
                         continue
         else:
+            compute_input_diversity = self.generation_reward_config.f_input_answer_diversity_reward.enabled
+            compute_output_diversity = self.generation_reward_config.f_output_answer_diversity_reward.enabled
             for data_dict in data_dicts:
                 rewards[data_dict['uid']]['input_type_counts'] = []
                 rewards[data_dict['uid']]['output_type_counts'] = []
                 if 'answer' in data_dict:
                     for inpt, outpt in zip(data_dict['answer']['inputs'], data_dict['answer']['outputs']):
-                        rewards[data_dict['uid']]['input_type_counts'].append(get_type_counts_reward(
-                            inpt,
-                            input_type_counters,
-                            hierarchical=self.generation_reward_config.answer_diversity_reward.hierarchical
-                        ))
-                        rewards[data_dict['uid']]['output_type_counts'].append(get_type_counts_reward(
-                            outpt,
-                            output_type_counters,
-                            hierarchical=self.generation_reward_config.answer_diversity_reward.hierarchical
-                        ))
-                    rewards[data_dict['uid']]['input_type_counts'] = np.mean(rewards[data_dict['uid']]['input_type_counts'])
-                    rewards[data_dict['uid']]['output_type_counts'] = np.mean(rewards[data_dict['uid']]['output_type_counts'])
+                        if compute_input_diversity:
+                            rewards[data_dict['uid']]['input_type_counts'].append(get_type_counts_reward(
+                                inpt,
+                                input_type_counters,
+                                hierarchical=self.generation_reward_config.answer_diversity_reward.hierarchical
+                            ))
+                        if compute_output_diversity:
+                            rewards[data_dict['uid']]['output_type_counts'].append(get_type_counts_reward(
+                                outpt,
+                                output_type_counters,
+                                hierarchical=self.generation_reward_config.answer_diversity_reward.hierarchical
+                            ))
+                    rewards[data_dict['uid']]['input_type_counts'] = np.mean(rewards[data_dict['uid']]['input_type_counts']) if compute_input_diversity else 0.0
+                    rewards[data_dict['uid']]['output_type_counts'] = np.mean(rewards[data_dict['uid']]['output_type_counts']) if compute_output_diversity else 0.0
                 else:
                     rewards[data_dict['uid']]['input_type_counts'] = 0.0
                     rewards[data_dict['uid']]['output_type_counts'] = 0.0
