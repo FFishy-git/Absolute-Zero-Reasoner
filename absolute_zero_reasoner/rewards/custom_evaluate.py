@@ -84,7 +84,7 @@ def get_gt_reward(solution_str: str, ground_truth: str, extraction_type: str, me
 
 
 def extract_answer(solution_str: str, extraction_type: str, boxed_retry: bool = False) -> str:
-    if extraction_type.startswith('answer'):
+    if extraction_type.startswith('answer') or extraction_type.startswith('chat_think'):
         if "<answer>" in solution_str:
             answer = solution_str.split("<answer>")[-1].split("</answer>")[0]
         else:
@@ -117,6 +117,15 @@ def get_format_reward(
     if extraction_type.startswith('answer'):
         pattern = r"(?s)<think>.*?</think>\s*<answer>.*?</answer>"
         matched = re.match(pattern, solution_str)
+        if matched:
+            return 1.
+        else:
+            return 0.
+    elif extraction_type.startswith('chat_think'):
+        # Chat/instruct models emit the assistant turn fresh, often with
+        # leading whitespace or a short preamble. Accept the block anywhere.
+        pattern = r"(?s)<think>.*?</think>\s*<answer>.*?</answer>"
+        matched = re.search(pattern, solution_str)
         if matched:
             return 1.
         else:
@@ -165,7 +174,7 @@ def get_reward(
     gt_reward = get_gt_reward(solution_str, ground_truth, extraction_type, extra_info['metric'], math_metric, boxed_retry=boxed_retry)
     format_reward = get_format_reward(solution_str, extraction_type)
     if extra_info['split'] == 'train':
-        if extraction_type.startswith('answer') or extraction_type.startswith('boxed'):
+        if extraction_type.startswith('answer') or extraction_type.startswith('boxed') or extraction_type.startswith('chat_think'):
             if extraction_type.endswith('conditional'):
                 # R(answer) =
                 # 1 if correct formatting and correct answer

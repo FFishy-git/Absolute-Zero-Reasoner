@@ -51,6 +51,16 @@ METRIC_MAP = {
 instruction_following = "A conversation between User and Assistant. The user asks a question, and the Assistant solves it. The assistant first thinks about the reasoning process in the mind and then provides the user with the answer. The reasoning process and answer are enclosed within <think> </think> and <answer> </answer> tags, respectively, i.e., <think> reasoning process here </think> <answer> answer here </answer>. User: {}\nAssistant: <think>"
 boxed_instruction = "{}\nPlease reason step by step, and put your final answer within \\boxed{{}}."
 
+# For chat/instruct models (e.g. OLMo-3-7B-Instruct-SFT). The format contract
+# goes in a system message so the user turn carries only the problem; we leave
+# it to the chat template to add the assistant turn delimiter.
+chat_think_system = (
+    "You are a problem-solving assistant. For every user question:\n"
+    "1. First write your step-by-step reasoning inside <think>...</think>.\n"
+    "2. Then give the final answer inside <answer>...</answer>.\n"
+    "Output nothing outside these two blocks."
+)
+
 
 # add a row to each data item that represents a unique id
 def make_map_fn(split, question_key, answer_key, do_extract_solution, reward_fn_extraction_type, nothink = False):
@@ -62,6 +72,8 @@ def make_map_fn(split, question_key, answer_key, do_extract_solution, reward_fn_
             formatted_question = (instruction_following if not nothink else instruction_following.strip(' <think>')).format(question)
         elif reward_fn_extraction_type == 'boxed':
             formatted_question = boxed_instruction.format(question)
+        elif reward_fn_extraction_type == 'chat_think':
+            formatted_question = question
         elif reward_fn_extraction_type == 'none':
             formatted_question = question
         # gpqa has this string in the question
@@ -76,12 +88,16 @@ def make_map_fn(split, question_key, answer_key, do_extract_solution, reward_fn_
         else:
             solution = answer
         data_source = example.pop('data_source')
+        if reward_fn_extraction_type == 'chat_think':
+            prompt = [
+                {"role": "system", "content": chat_think_system},
+                {"role": "user",   "content": formatted_question},
+            ]
+        else:
+            prompt = [{"role": "user", "content": formatted_question}]
         data = {
             "data_source": data_source,
-            "prompt": [{
-                "role": "user",
-                "content": formatted_question
-            }],
+            "prompt": prompt,
             "problem": question,
             "ability": "math",
             "reward_model": {

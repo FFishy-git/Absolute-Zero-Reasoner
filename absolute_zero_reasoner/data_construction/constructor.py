@@ -5,7 +5,11 @@ import pandas as pd
 from transformers import AutoTokenizer
 
 from absolute_zero_reasoner.data_construction.prompts import get_code_problem_generator_prompt, get_code_problem_predictor_prompt
-from absolute_zero_reasoner.data_construction.process_data import boxed_instruction, instruction_following
+from absolute_zero_reasoner.data_construction.process_data import (
+    boxed_instruction,
+    chat_think_system,
+    instruction_following,
+)
 from absolute_zero_reasoner.utils.code_utils.parsers import replace_main_function_name
 
 
@@ -36,10 +40,13 @@ def get_gen_code_io_data(
         instruction_template = boxed_instruction
     elif instruction_type.startswith('answer'):
         instruction_template = instruction_following
+    elif instruction_type.startswith('chat_think'):
+        instruction_template = '{}'
     elif instruction_type.startswith('none'):
         instruction_template = '{}'
     else:
         raise ValueError(f"Invalid instruction type: {instruction_type}")
+    use_chat_messages = instruction_type.startswith('chat_think')
 
     if weights is None:
         probabilities = [1.0 / len(io_data)] * len(io_data)
@@ -88,12 +95,16 @@ def get_gen_code_io_data(
             )
         )
         if len(tokenizer(io_prompt)['input_ids']) <= content_max_length:
+            if use_chat_messages:
+                gen_prompt = [
+                    {"role": "system", "content": chat_think_system},
+                    {"role": "user",   "content": io_prompt},
+                ]
+            else:
+                gen_prompt = [{"role": "user", "content": io_prompt}]
             io_item = {
                 "data_source": 'gen_' + problem_type,
-                "prompt": [{
-                    "role": "user",
-                    "content": io_prompt,
-                }],
+                "prompt": gen_prompt,
                 "problem": '',
                 "ability": "code",
                 "reward_model": {
@@ -140,10 +151,13 @@ def get_pred_code_io_data(
         instruction_template = boxed_instruction
     elif instruction_type.startswith('answer'):
         instruction_template = instruction_following
+    elif instruction_type.startswith('chat_think'):
+        instruction_template = '{}'
     elif instruction_type.startswith('none'):
         instruction_template = '{}'
     else:
         raise ValueError(f"Invalid instruction type: {instruction_type}")
+    use_chat_messages = instruction_type.startswith('chat_think')
 
     for idx, io_item in enumerate(io_data):
         if problem_type == 'code_i':
@@ -181,12 +195,16 @@ def get_pred_code_io_data(
                 )
             )
         if len(tokenizer(io_prompt)['input_ids']) <= content_max_length:
+            if use_chat_messages:
+                pred_prompt = [
+                    {"role": "system", "content": chat_think_system},
+                    {"role": "user",   "content": io_prompt},
+                ]
+            else:
+                pred_prompt = [{"role": "user", "content": io_prompt}]
             output_io_item = {
                 "data_source": 'pred_' + problem_type,
-                "prompt": [{
-                    "role": "user",
-                    "content": io_prompt,
-                }],
+                "prompt": pred_prompt,
                 "problem": io_item['snippet'],
                 "ability": "code",
                 "reward_model": {

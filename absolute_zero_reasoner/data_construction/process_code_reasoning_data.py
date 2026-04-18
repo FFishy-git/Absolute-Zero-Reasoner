@@ -8,7 +8,20 @@ import pandas as pd
 
 from absolute_zero_reasoner.rewards.code_reward import format_python_code
 from absolute_zero_reasoner.data_construction.prompts import get_code_problem_predictor_prompt
-from absolute_zero_reasoner.data_construction.process_data import instruction_following
+from absolute_zero_reasoner.data_construction.process_data import (
+    chat_think_system,
+    instruction_following,
+)
+
+
+def _build_prompt(extraction_type: str, raw_prompt: str):
+    """Wrap the raw predictor prompt for the given extraction type."""
+    if extraction_type == 'chat_think':
+        return [
+            {"role": "system", "content": chat_think_system},
+            {"role": "user",   "content": raw_prompt},
+        ]
+    return [{"role": "user", "content": instruction_following.format(raw_prompt)}]
 
 def process_livecodebench_execution(row):
     # Extract all function names from the code
@@ -81,6 +94,9 @@ def add_imports(problem):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--max_length', type=int, default=-1)
+    parser.add_argument('--extraction_type', choices=['answer', 'chat_think'], default='answer',
+                        help="'answer' builds test_answer.parquet (base-model format); "
+                             "'chat_think' builds test_chat_think.parquet (instruct-model format)")
     args = parser.parse_args()
 
     # 283, 452, 510
@@ -89,13 +105,9 @@ if __name__ == '__main__':
     output_data = []
     for i, data in enumerate(tqdm(ds, desc="Processing CruxEval")):
         prompt = get_code_problem_predictor_prompt('code_i', data['problem'], data['input'], data['output'])
-        formatted_question = instruction_following.format(prompt)
         output_data.append({
             "data_source": 'cruxeval_i',
-            "prompt": [{
-                "role": "user",
-                "content": formatted_question
-            }],
+            "prompt": _build_prompt(args.extraction_type, prompt),
             "problem": data['problem'],
             "ability": "math",
             "reward_model": {
@@ -112,13 +124,9 @@ if __name__ == '__main__':
             }
         })
         prompt = get_code_problem_predictor_prompt('code_o', data['problem'], data['input'], data['output'])
-        formatted_question = instruction_following.format(prompt)
         output_data.append({
             "data_source": 'cruxeval_o',
-            "prompt": [{
-                "role": "user",
-                "content": formatted_question
-            }],
+            "prompt": _build_prompt(args.extraction_type, prompt),
             "problem": data['problem'],
             "ability": "math",
             "reward_model": {
@@ -144,13 +152,9 @@ if __name__ == '__main__':
     ds = ds.map(lambda x: {'problem': add_imports(x['problem'])})
     for i, data in enumerate(tqdm(ds, desc="Processing LiveCodeBench")):
         prompt = get_code_problem_predictor_prompt('code_i', data['problem'], data['input'], data['output'])
-        formatted_question = instruction_following.format(prompt)
         output_data.append({
             "data_source": 'livecodebench',
-            "prompt": [{
-                "role": "user",
-                "content": formatted_question
-            }],
+            "prompt": _build_prompt(args.extraction_type, prompt),
             "problem": data['problem'],
             "ability": "math",
             "reward_model": {
@@ -172,4 +176,6 @@ if __name__ == '__main__':
         df = df.iloc[:args.max_length]
     path = Path('data/code_reason')
     path.mkdir(parents=True, exist_ok=True)
-    df.to_parquet(path / f'test_answer{"_" + str(args.max_length) if args.max_length > 0 else ""}.parquet')
+    name = 'test_answer' if args.extraction_type == 'answer' else f'test_{args.extraction_type}'
+    suffix = f'_{args.max_length}' if args.max_length > 0 else ''
+    df.to_parquet(path / f'{name}{suffix}.parquet')

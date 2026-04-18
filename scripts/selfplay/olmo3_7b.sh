@@ -14,8 +14,8 @@ python -m absolute_zero_reasoner.main_azr_ppo \
     data.shuffle=True \
     actor_rollout_ref.ref.include_ref=False \
     algorithm.adv_estimator=reinforce_plus_plus \
-    data.train_files=data/code_reason/test_answer.parquet \
-    data.val_files=data/code_reason/test_answer.parquet \
+    data.train_files=data/code_reason/test_chat_think.parquet \
+    data.val_files=data/code_reason/test_chat_think.parquet \
     data.train_batch_size=64 \
     data.val_batch_size=1312 \
     data.max_prompt_length=6144 \
@@ -58,7 +58,7 @@ python -m absolute_zero_reasoner.main_azr_ppo \
     trainer.del_local_ckpt_after_load=True \
     trainer.test_freq=10 \
     +trainer.val_before_train=True \
-    reward_fn.extraction_type=answer_conditional \
+    reward_fn.extraction_type=chat_think_conditional \
     reward_fn.math_metric=math_verify \
     trainer.log_val_generations=0 \
     azr.data_selection_strategy.update_iteration=1 \

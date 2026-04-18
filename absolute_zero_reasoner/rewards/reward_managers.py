@@ -26,7 +26,11 @@ from absolute_zero_reasoner.rewards.code_reward import (
     get_type_counts_reward,
 )
 from absolute_zero_reasoner.rewards.custom_evaluate import get_format_reward, extract_answer, extract_thought
-from absolute_zero_reasoner.data_construction.process_data import boxed_instruction, instruction_following
+from absolute_zero_reasoner.data_construction.process_data import (
+    boxed_instruction,
+    chat_think_system,
+    instruction_following,
+)
 from absolute_zero_reasoner.data_construction.constructor import get_code_problem_predictor_prompt
 from absolute_zero_reasoner.utils.dataset.rl_dataset import RLHFDataset
 from absolute_zero_reasoner.utils.logging_utils.stdout import PrettyPrinter
@@ -572,10 +576,13 @@ class CodeIORewardManager():
                 instruction_template = boxed_instruction
             elif self.reward_fn_extraction_type.startswith('answer'):
                 instruction_template = instruction_following
+            elif self.reward_fn_extraction_type.startswith('chat_think'):
+                instruction_template = '{}'
             elif self.reward_fn_extraction_type.startswith('none'):
                 instruction_template = '{}'
             else:
                 raise ValueError(f"Invalid instruction type: {self.reward_fn_extraction_type}")
+            use_chat_messages = self.reward_fn_extraction_type.startswith('chat_think')
             prompts = []
             if problem_type.endswith('code_i'):
                 pt = 'code_i'
@@ -612,8 +619,15 @@ class CodeIORewardManager():
                             output=data_dict['answer']['output'],
                         )
                     )
+                if use_chat_messages:
+                    chat_prompt = [
+                        {'role': 'system', 'content': chat_think_system},
+                        {'role': 'user',   'content': io_prompt},
+                    ]
+                else:
+                    chat_prompt = [{'role': 'user', 'content': io_prompt}]
                 prompts_dict = {
-                    'prompt': [{'role': 'user', 'content': io_prompt}],
+                    'prompt': chat_prompt,
                     'uid': data_dict['uid'],
                     'problem': data_dict['answer'],
                     'data_source': data_dict['data_source'],
