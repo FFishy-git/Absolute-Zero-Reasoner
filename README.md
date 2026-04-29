@@ -391,6 +391,25 @@ python -m absolute_zero_reasoner.utils.convert2hf \
   <hf_ckpt_path>
 ```
 
+## 🤗 Local SER Checkpoints
+The locally saved SER checkpoints were uploaded to the Hugging Face dataset
+[`Siyuc/SER`](https://huggingface.co/datasets/Siyuc/SER). To retrieve one later,
+download the desired subfolder into a local checkpoint directory:
+
+```bash
+mkdir -p checkpoints/hf
+huggingface-cli download Siyuc/SER \
+  --repo-type dataset \
+  --include "AZR_qwen3_8b_base/*" \
+  --local-dir checkpoints/hf
+```
+
+Available AZR folders:
+
+- `AZR_qwen3_4b_base`: merged Hugging Face checkpoint converted from AZR Qwen3-4B step 500.
+- `AZR_qwen3_8b_base`: merged Hugging Face checkpoint converted from AZR Qwen3-8B step 500.
+- `AZR_olmo3_7b_base`: full veRL/FSDP checkpoint for AZR OLMo-3-7B step 40, not a merged Hugging Face export.
+
 ## 📈Design Your Own Intrinsic Rewards!
 In configs, just add your own rewards to `azr.reward.generation_reward_config`, check the ones already implemented such as diversity and complexity rewards. Be Creative!
 
